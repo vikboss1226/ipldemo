@@ -1,0 +1,30 @@
+// ⚠️ DEMO FILE — exists only to demonstrate the CI/CD pipeline's
+// AI + regex secret-scanning step (see .github/workflows/cicd.yml,
+// job "ai-code-review"). These are fake/dummy values, not real
+// credentials — do not treat this as a real database config.
+//
+// To see the "Regex Secret Scan" section in the generated report go
+// from N finding(s) back to 0 finding(s), delete this file (or remove
+// the hardcoded values below) and push again. The scan reads whatever
+// is in the repo at the time the pipeline runs, so the report always
+// reflects the current state of the code.
+
+const DB_HOST = "demo-db.cluster-xyz.us-east-1.rds.amazonaws.com";
+const DB_PORT = 5432;
+const DB_USER = "admin";
+const DB_PASSWORD = "SuperSecretPass123456";
+const DB_NAME = "ipldemo";
+const DB_API_KEY = "demo1234567890abcdefKEY";
+
+const DB_CONNECTION_STRING =
+  "postgres://admin:SuperSecretPass123456@demo-db.cluster-xyz.us-east-1.rds.amazonaws.com:5432/ipldemo";
+
+export {
+  DB_HOST,
+  DB_PORT,
+  DB_USER,
+  DB_PASSWORD,
+  DB_NAME,
+  DB_API_KEY,
+  DB_CONNECTION_STRING,
+};

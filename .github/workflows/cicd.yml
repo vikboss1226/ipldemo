@@ -190,6 +190,7 @@ jobs:
               ("Private key block", re.compile(r"-----BEGIN (RSA|EC|OPENSSH|DSA|PRIVATE) KEY-----")),
               ("Slack token", re.compile(r"xox[baprs]-[0-9A-Za-z-]{10,}")),
               ("OpenAI-style key", re.compile(r"sk-[A-Za-z0-9]{20,}")),
+              ("DB connection string with embedded credentials", re.compile(r"[a-zA-Z][a-zA-Z0-9+.\-]*://[^\s:@'\"]+:[^\s@'\"]+@[^\s/'\"]+")),
           ]
 
           def scan_secrets(files):
