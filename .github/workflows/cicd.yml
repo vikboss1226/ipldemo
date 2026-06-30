@@ -134,3 +134,185 @@ jobs:
             sudo cp -r /home/${{ secrets.EC2_USERNAME }}/app-deploy/* /var/www/html/
             sudo systemctl reload nginx
             rm -rf /home/${{ secrets.EC2_USERNAME }}/app-deploy
+
+  # ---------- AI code-quality + secret scan (runs independently, doesn't block deploy) ----------
+  # Requires GitHub Secret: OPENAI_API_KEY (Repository secret, NOT environment-scoped)
+  ai-code-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install --quiet openai markdown
+
+      - name: Run AI code quality + secret scan
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: gpt-5.4-mini
+        run: |
+          cat > review.py <<'PYEOF'
+          import os, re, json, datetime
+          import markdown as md
+          from openai import OpenAI
+
+          MODEL = os.environ.get("OPENAI_MODEL", "gpt-5.4-mini")
+          MAX_CHARS = 40000
+          SKIP_DIRS = {"node_modules", "build", "dist", ".git", ".github"}
+          INCLUDE_EXT = {".js", ".jsx", ".ts", ".tsx", ".css", ".json"}
+
+          def collect_files(root="."):
+              collected = []
+              for dirpath, dirnames, filenames in os.walk(root):
+                  dirnames[:] = [d for d in dirnames if d not in SKIP_DIRS and not d.startswith(".")]
+                  for fn in filenames:
+                      ext = os.path.splitext(fn)[1]
+                      if ext in INCLUDE_EXT:
+                          path = os.path.join(dirpath, fn)
+                          try:
+                              with open(path, "r", errors="ignore") as f:
+                                  collected.append((path, f.read()))
+                          except Exception:
+                              pass
+              return collected
+
+          SECRET_PATTERNS = [
+              ("AWS Access Key ID", re.compile(r"AKIA[0-9A-Z]{16}")),
+              ("Generic key/secret/token assignment", re.compile(r"(?i)(api[_-]?key|secret|token|password)\s*[:=]\s*[\"'][A-Za-z0-9_\-/+=]{16,}[\"']")),
+              ("Private key block", re.compile(r"-----BEGIN (RSA|EC|OPENSSH|DSA|PRIVATE) KEY-----")),
+              ("Slack token", re.compile(r"xox[baprs]-[0-9A-Za-z-]{10,}")),
+              ("OpenAI-style key", re.compile(r"sk-[A-Za-z0-9]{20,}")),
+          ]
+
+          def scan_secrets(files):
+              findings = []
+              for path, content in files:
+                  for label, pattern in SECRET_PATTERNS:
+                      for m in pattern.finditer(content):
+                          line_no = content[:m.start()].count("\n") + 1
+                          findings.append({"file": path, "line": line_no, "type": label, "preview": m.group(0)[:6] + "..."})
+              return findings
+
+          files = collect_files(".")
+          secret_findings = scan_secrets(files)
+
+          combined = ""
+          for path, content in files:
+              combined += "\n\n=== FILE: " + path + " ===\n" + content
+          truncated = len(combined) > MAX_CHARS
+          combined = combined[:MAX_CHARS]
+
+          ai_markdown = None
+          ai_error = None
+          api_key = os.environ.get("OPENAI_API_KEY")
+          if not api_key:
+              ai_error = "OPENAI_API_KEY secret is not set."
+          else:
+              try:
+                  client = OpenAI(api_key=api_key)
+                  system_prompt = (
+                      "You are a senior code reviewer. Review the provided React/JavaScript "
+                      "project source for code quality, best practices, potential bugs, and "
+                      "security issues. Pay special attention to any hardcoded secrets, API "
+                      "keys, passwords, or credentials. Respond in Markdown with sections: "
+                      "## Summary, ## Code Quality Issues, ## Security / Secret Findings, "
+                      "## Recommendations."
+                  )
+                  user_prompt = (
+                      "A regex-based secret scanner flagged " + str(len(secret_findings)) +
+                      " potential match(es) (confirm/refute/add to these in your Security "
+                      "section):\n" + json.dumps(secret_findings, indent=2) +
+                      "\n\nProject source follows:\n" + combined
+                  )
+                  resp = client.chat.completions.create(
+                      model=MODEL,
+                      messages=[
+                          {"role": "system", "content": system_prompt},
+                          {"role": "user", "content": user_prompt},
+                      ],
+                      temperature=0.2,
+                  )
+                  ai_markdown = resp.choices[0].message.content
+              except Exception as e:
+                  ai_error = str(e)
+
+          if ai_markdown:
+              ai_html = md.markdown(ai_markdown, extensions=["fenced_code", "tables"])
+          else:
+              ai_html = "<p style='color:#b91c1c'><strong>AI review unavailable:</strong> " + (ai_error or "unknown error") + "</p>"
+
+          rows = "".join(
+              "<tr><td>{file}</td><td>{line}</td><td>{type}</td><td><code>{preview}</code></td></tr>".format(**f)
+              for f in secret_findings
+          )
+          if not rows:
+              rows = "<tr><td colspan='4'>No pattern matches found.</td></tr>"
+
+          html_template = """<!DOCTYPE html>
+          <html><head><meta charset="utf-8">
+          <title>Code Quality and Secret Scan Report</title>
+          <style>
+          body {{ font-family: -apple-system, Segoe UI, Arial, sans-serif; margin: 40px; color: #1f2328; max-width: 900px; }}
+          h1 {{ border-bottom: 2px solid #d0d7de; padding-bottom: 8px; }}
+          table {{ border-collapse: collapse; width: 100%; margin: 16px 0; }}
+          th, td {{ border: 1px solid #d0d7de; padding: 8px; text-align: left; font-size: 14px; }}
+          th {{ background: #f6f8fa; }}
+          .meta {{ color: #57606a; font-size: 13px; margin-bottom: 24px; }}
+          code {{ background: #f6f8fa; padding: 2px 4px; border-radius: 4px; }}
+          pre {{ background: #f6f8fa; padding: 12px; border-radius: 6px; overflow-x: auto; }}
+          </style></head><body>
+          <h1>Code Quality and Secret Scan Report</h1>
+          <div class="meta">Repo: {repo} &middot; Commit: {sha} &middot; Run #{run} &middot; Generated: {ts}{trunc_note}</div>
+          <h2>Regex Secret Scan ({count} finding(s))</h2>
+          <table><tr><th>File</th><th>Line</th><th>Type</th><th>Preview</th></tr>{rows}</table>
+          <h2>AI Review ({model})</h2>
+          {ai_html}
+          </body></html>
+          """
+
+          html = html_template.format(
+              repo=os.environ.get("GITHUB_REPOSITORY", "n/a"),
+              sha=os.environ.get("GITHUB_SHA", "n/a")[:7],
+              run=os.environ.get("GITHUB_RUN_NUMBER", "n/a"),
+              ts=datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+              trunc_note=" &middot; (source truncated to fit token budget)" if truncated else "",
+              count=len(secret_findings),
+              rows=rows,
+              model=MODEL,
+              ai_html=ai_html,
+          )
+
+          with open("code-quality-report.html", "w") as f:
+              f.write(html)
+
+          print("Report written: code-quality-report.html")
+          if secret_findings:
+              print("WARNING:", len(secret_findings), "potential secret(s) found by regex scan.")
+          PYEOF
+          python review.py
+
+      - name: Upload code quality report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-report
+          path: code-quality-report.html
+          retention-days: 30
+
+  # ---------- Demonstrates downloading the artifact in a separate downstream job ----------
+  publish-report:
+    needs: ai-code-review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download code quality report artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: code-quality-report
+          path: ./report
+
+      - name: Confirm report downloaded
+        run: ls -la ./report
