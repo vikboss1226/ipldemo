@@ -33,6 +33,7 @@ on:
 jobs:
   build-test-deploy:
     runs-on: ubuntu-latest
+    environment: dev   # secrets EC2_HOST/EC2_USERNAME/EC2_SSH_KEY are scoped to this environment
 
     steps:
       # ---------- CI: install, test, build ----------
