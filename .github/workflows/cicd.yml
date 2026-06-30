@@ -1,9 +1,12 @@
 # ------------------------------------------------------------------
-# CI/CD Workflow: Build React App -> Provision EC2 -> Deploy (Nginx)
+# Single-file CI/CD: Install -> Test -> Build -> Provision EC2 -> Deploy (Nginx)
+#
+# This replaces the old separate ci.yml + deploy.yml.
 #
 # This workflow assumes the EC2 instance is BLANK (nothing installed).
 # Every run checks whether Nginx exists and installs/configures it if not,
 # so the first run provisions the server and every later run just deploys.
+# If tests fail, the build/provision/deploy steps never run.
 #
 # Required GitHub Secrets (Repo Settings > Secrets and variables > Actions):
 #   EC2_HOST       - EC2 public IP or DNS (e.g. 13.234.56.78)
@@ -20,7 +23,7 @@
 # Builds with `npm run build` (react-scripts), output folder: build/
 # ------------------------------------------------------------------
 
-name: Deploy React App to EC2
+name: CI/CD - Build, Test, Deploy to EC2
 
 on:
   push:
@@ -28,10 +31,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build-test-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # ---------- CI: install, test, build ----------
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -44,9 +48,13 @@ jobs:
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Run tests
+        run: npm test -- --watchAll=false
+
       - name: Build React app
         run: npm run build
 
+      # ---------- CD: provision EC2, then deploy ----------
       - name: Provision EC2 (install & start Nginx if missing)
         uses: appleboy/ssh-action@v1.0.3
         with:
