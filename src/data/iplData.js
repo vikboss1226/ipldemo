@@ -28,7 +28,7 @@ export const matches = [
 ];
 
 export const topScorers = [
-  { rank: 1, name: "Virat Kohli", team: "RCB", matches: 14, runs: 712, avg: 59.3, sr: 152.1, hs: "101*" },
+  { rank: 1, name: "Surya Vamsi", team: "RCB", matches: 14, runs: 712, avg: 59.3, sr: 152.1, hs: "101*" },
   { rank: 2, name: "Shubman Gill", team: "GT", matches: 14, runs: 678, avg: 56.5, sr: 148.7, hs: "98" },
   { rank: 3, name: "Rohit Sharma", team: "MI", matches: 14, runs: 642, avg: 49.4, sr: 145.3, hs: "105*" },
   { rank: 4, name: "Yashasvi Jaiswal", team: "RR", matches: 14, runs: 615, avg: 47.3, sr: 158.9, hs: "92" },
