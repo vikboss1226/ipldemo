@@ -63,10 +63,24 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             if ! command -v nginx >/dev/null 2>&1; then
               echo "Nginx not found, installing..."
-              sudo apt-get update -y
-              sudo apt-get install -y nginx
+              if command -v dnf >/dev/null 2>&1; then
+                sudo dnf install -y nginx
+              elif command -v yum >/dev/null 2>&1; then
+                if command -v amazon-linux-extras >/dev/null 2>&1; then
+                  sudo amazon-linux-extras install -y nginx1
+                else
+                  sudo yum install -y nginx
+                fi
+              elif command -v apt-get >/dev/null 2>&1; then
+                sudo apt-get update -y
+                sudo apt-get install -y nginx
+              else
+                echo "ERROR: no supported package manager (dnf/yum/apt-get) found" >&2
+                exit 1
+              fi
             else
               echo "Nginx already installed, skipping install."
             fi
@@ -77,6 +91,7 @@ jobs:
             if command -v ufw >/dev/null 2>&1; then
               sudo ufw allow 'Nginx Full' || true
             fi
+            sudo systemctl is-active --quiet nginx && echo "Nginx is running" || { echo "ERROR: nginx failed to start" >&2; exit 1; }
 
       - name: Copy build files to EC2
         uses: appleboy/scp-action@v0.1.7
