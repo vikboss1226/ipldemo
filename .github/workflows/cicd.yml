@@ -136,9 +136,10 @@ jobs:
             rm -rf /home/${{ secrets.EC2_USERNAME }}/app-deploy
 
   # ---------- AI code-quality + secret scan (runs independently, doesn't block deploy) ----------
-  # Requires GitHub Secret: OPENAI_API_KEY (Repository secret, NOT environment-scoped)
+  # Requires GitHub Secret: OPENAI_API_KEY (scoped to the "dev" environment, same as the EC2 secrets)
   ai-code-review:
     runs-on: ubuntu-latest
+    environment: dev   # OPENAI_API_KEY is scoped to this environment
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
