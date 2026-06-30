@@ -31,6 +31,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ---------- Step 1: install, test, build, provision EC2, deploy ----------
   build-test-deploy:
     runs-on: ubuntu-latest
     environment: dev   # secrets EC2_HOST/EC2_USERNAME/EC2_SSH_KEY are scoped to this environment
@@ -135,9 +136,10 @@ jobs:
             sudo systemctl reload nginx
             rm -rf /home/${{ secrets.EC2_USERNAME }}/app-deploy
 
-  # ---------- AI code-quality + secret scan (runs independently, doesn't block deploy) ----------
+  # ---------- AI code-quality + secret scan (Step 2: runs only after build-test-deploy succeeds) ----------
   # Requires GitHub Secret: OPENAI_API_KEY (scoped to the "dev" environment, same as the EC2 secrets)
   ai-code-review:
+    needs: build-test-deploy
     runs-on: ubuntu-latest
     environment: dev   # OPENAI_API_KEY is scoped to this environment
     steps:
@@ -304,9 +306,9 @@ jobs:
           path: code-quality-report.html
           retention-days: 30
 
-  # ---------- Demonstrates downloading the artifact in a separate downstream job ----------
+  # ---------- Step 3: downloads the report artifact produced by Step 2 ----------
   publish-report:
-    needs: ai-code-review
+    needs: ai-code-review   # runs only after ai-code-review succeeds
     runs-on: ubuntu-latest
     steps:
       - name: Download code quality report artifact
