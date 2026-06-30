@@ -9,15 +9,15 @@
 // is in the repo at the time the pipeline runs, so the report always
 // reflects the current state of the code.
 
-const DB_HOST = "";
-const DB_PORT = "";
-const DB_USER = "";
-const DB_PASSWORD = "";
-const DB_NAME = "";
-const DB_API_KEY = "";
+const DB_HOST = "demo-db.cluster-xyz.us-east-1.rds.amazonaws.com";
+const DB_PORT = 5432;
+const DB_USER = "admin";
+const DB_PASSWORD = "SuperSecretPass123456";
+const DB_NAME = "ipldemo";
+const DB_API_KEY = "demo1234567890abcdefKEY";
 
 const DB_CONNECTION_STRING =
-  "";
+  "postgres://admin:SuperSecretPass123456@demo-db.cluster-xyz.us-east-1.rds.amazonaws.com:5432/ipldemo";
 
 export {
   DB_HOST,
