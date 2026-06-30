@@ -1,0 +1,137 @@
+.matches-page {
+  padding: 28px 32px 60px;
+  max-width: 1300px;
+  margin: 0 auto;
+}
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.filter-btn {
+  border: 1.5px solid #ddd;
+  background: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  color: #555;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  border-color: #ff9933;
+}
+
+.filter-btn.active {
+  background: linear-gradient(90deg, #ff9933, #ffd700);
+  border-color: transparent;
+  color: #1a0033;
+}
+
+.match-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.match-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+  transition: transform 0.2s ease;
+}
+
+.match-card:hover {
+  transform: translateY(-3px);
+}
+
+.match-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+}
+
+.badge.completed {
+  background: #e2f8ea;
+  color: #1a9c4a;
+}
+
+.badge.upcoming {
+  background: #fff3e0;
+  color: #e08a00;
+}
+
+.match-date {
+  font-size: 12px;
+  color: #999;
+}
+
+.match-teams {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.team-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+.team-name {
+  font-size: 11px;
+  text-align: center;
+  color: #444;
+  font-weight: 600;
+}
+
+.vs {
+  font-weight: 700;
+  color: #bbb;
+  font-size: 13px;
+}
+
+.match-venue {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 6px;
+}
+
+.match-result {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b0d8f;
+  background: #f6f3fb;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
